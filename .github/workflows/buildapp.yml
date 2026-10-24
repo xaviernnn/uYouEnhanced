@@ -195,7 +195,25 @@ jobs:
           sed -i '' "s/^BUNDLE_ID .*/BUNDLE_ID = ${{ inputs.bundle_id }}/" Makefile || echo "BUNDLE_ID = ${{ inputs.bundle_id }}" >> Makefile
           sed -i '' "s/^DISPLAY_NAME .*/DISPLAY_NAME = ${{ inputs.app_name }}/" Makefile || echo "DISPLAY_NAME = ${{ inputs.app_name }}" >> Makefile
           sed -i '' "s/^export TARGET .*/export TARGET = iphone:clang:${{ inputs.sdk_version }}:15.0/" Makefile || echo "export TARGET = iphone:clang:${{ inputs.sdk_version }}:15.0" >> Makefile
-          make package THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1 YTUHD_ENABLED=${{ inputs.ytuhd && '1' || '0' }} SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }}
+         
+          echo "=== Début du diagnostic ==="
+          date
+          df -h .
+
+          make package messages=yes THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1 YTUHD_ENABLED=${{ inputs.ytuhd && '1' || '0' }} SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }} &
+          BUILD_PID=$!
+
+          while kill -0 "$BUILD_PID" 2>/dev/null; do
+            echo "=== Processus de compilation ==="
+            date
+            ps -axo pid,ppid,stat,etime,%cpu,command | grep -E 'make|bash|od |zip|dpkg|ldid|python|perl' | head -25 || true
+            df -h .
+            sleep 60
+          done
+
+          wait "$BUILD_PID"
+          echo "=== Compilation terminée ==="
+
           echo "package=$(ls -t packages | head -n1)" >> $GITHUB_OUTPUT
 
         env:
